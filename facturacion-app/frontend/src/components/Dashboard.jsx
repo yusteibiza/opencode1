@@ -171,6 +171,9 @@ function Dashboard() {
         }]
     };
 
+    const ventas6MesesTotal = ventasPorMes.reduce((sum, m) => sum + m.total, 0);
+    const ventasPromedioMes = ventas6MesesTotal / 6;
+
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     
     if (isDark) {
@@ -239,141 +242,6 @@ function Dashboard() {
             </div>
         );
     }
-
-    return (
-        <div>
-            <div className="page-header">
-                <div>
-                    <h1 className="page-title">Dashboard</h1>
-                    <p className="page-subtitle">Resumen general del sistema</p>
-                </div>
-                <button className="btn btn-primary" onClick={fetchData}>
-                    🔄 Actualizar
-                </button>
-            </div>
-
-            {/* Stats - Fila 1 */}
-            <div style={{ 
-                display: 'flex', 
-                flexWrap: 'wrap',
-                gap: '20px',
-                marginBottom: '20px'
-            }}>
-                <div className="card" style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '12px', 
-                    padding: '16px',
-                    flex: '1 1 200px',
-                    minWidth: '200px'
-                }}>
-                    <div style={{ 
-                        width: '44px', 
-                        height: '44px', 
-                        borderRadius: '8px', 
-                        background: isDark ? 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)' : 'linear-gradient(135deg, #0078d4 0%, #106ebe 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '20px'
-                    }}>
-                        👥
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Total Clientes</div>
-                        <div style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {stats.totalClientes}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="card" style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '12px', 
-                    padding: '16px',
-                    flex: '1 1 200px',
-                    minWidth: '200px'
-                }}>
-                    <div style={{ 
-                        width: '44px', 
-                        height: '44px', 
-                        borderRadius: '8px', 
-                        background: isDark ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '20px'
-                    }}>
-                        📦
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Total Productos</div>
-                        <div style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {stats.totalProductos}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="card" style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '12px', 
-                    padding: '16px',
-                    flex: '1 1 200px',
-                    minWidth: '200px'
-                }}>
-                    <div style={{ 
-                        width: '44px', 
-                        height: '44px', 
-                        borderRadius: '8px', 
-                        background: isDark ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' : 'linear-gradient(135deg, #107c10 0%, #0b5d0b 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '20px'
-                    }}>
-                        📄
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Total Facturas</div>
-                        <div style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {stats.totalFacturas}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="card" style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '12px', 
-                    padding: '16px',
-                    flex: '1 1 200px',
-                    minWidth: '200px'
-                }}>
-                    <div style={{ 
-                        width: '44px', 
-                        height: '44px', 
-                        borderRadius: '8px', 
-                        background: isDark ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)' : 'linear-gradient(135deg, #ffc107 0%, #f59e0b 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '20px'
-                    }}>
-                        💰
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Total Ventas</div>
-                        <div style={{ fontSize: '24px', fontWeight: 600, color: isDark ? '#fbbf24' : '#0078d4' }}>
-                            {formatMoneda(stats.totalVentas)}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            const ventas6MesesTotal = ventasPorMes.reduce((sum, m) => sum + m.total, 0);
-    const ventasPromedioMes = ventas6MesesTotal / 6;
 
     return (
         <div>
