@@ -7,9 +7,10 @@ Sistema web de facturación con base de datos SQLite, Node.js/Express backend y 
 - Gestión completa de clientes (CRUD)
 - Gestión de productos (CRUD)
 - Creación de facturas con múltiples items
-- Cálculo automático de subtotal, IVA (16%) y total
+- Cálculo automático de subtotal, IVA (21%) y total
 - Exportación de facturas a PDF
 - Interfaz moderna y responsiva
+- Control automático de stock
 
 ## Tecnologías
 
@@ -26,23 +27,48 @@ Sistema web de facturación con base de datos SQLite, Node.js/Express backend y 
 - Axios
 - jsPDF
 
-## Instalación
+## Instalación Rápida (Un Solo Servidor)
 
-### Backend
+### Opción 1: Instalación completa automática
 ```bash
-cd backend
-npm install
+npm run setup
+```
+Este comando instala todas las dependencias, compila el frontend e inicia el servidor.
+
+### Opción 2: Paso a paso
+
+1. **Instalar todas las dependencias:**
+```bash
+npm run install:all
+```
+
+2. **Compilar el frontend:**
+```bash
+npm run build
+```
+
+3. **Iniciar el servidor:**
+```bash
 npm start
 ```
-El servidor se ejecutará en `http://localhost:5000`
 
-### Frontend
+La aplicación estará disponible en `http://localhost:5000`
+
+## Desarrollo
+
+Si estás desarrollando y quieres ver los cambios en tiempo real:
+
 ```bash
-cd frontend
-npm install
+# Terminal 1 - Backend
+npm start
+
+# Terminal 2 - Frontend (en modo desarrollo)
 npm run dev
 ```
-La aplicación se abrirá en `http://localhost:5173`
+
+Con esto:
+- Backend: `http://localhost:5000`
+- Frontend (dev): `http://localhost:5173`
 
 ## Estructura del Proyecto
 
@@ -52,6 +78,7 @@ facturacion-app/
 │   ├── database.js       # Configuración de SQLite
 │   ├── server.js         # Servidor Express
 │   ├── package.json
+│   ├── public/           # Frontend compilado (generado automáticamente)
 │   └── routes/           # Rutas API
 │       ├── clientes.js
 │       ├── productos.js
@@ -67,7 +94,8 @@ facturacion-app/
     │   ├── App.jsx
     │   ├── main.jsx
     │   └── index.css
-    └── package.json
+    ├── package.json
+    └── vite.config.js
 ```
 
 ## API Endpoints
@@ -104,16 +132,17 @@ La base de datos SQLite se crea automáticamente con las siguientes tablas:
 
 ## Uso
 
-1. Iniciar el backend: `cd backend && npm start`
-2. Iniciar el frontend: `cd frontend && npm run dev`
-3. Abrir `http://localhost:5173` en el navegador
-4. Navegar entre las secciones: Clientes, Productos, Facturas
-5. Crear clientes y productos primero
-6. Crear facturas seleccionando cliente y agregando productos
+1. Abrir `http://localhost:5000` en el navegador
+2. Navegar entre las secciones: Clientes, Productos, Facturas
+3. Crear clientes y productos primero
+4. Crear facturas seleccionando cliente y agregando productos
 
 ## Notas
 
-- El IVA está configurado al 16%
+- El IVA está configurado al 21%
 - Cada factura puede tener múltiples items
 - Los productos se pueden reutilizar en diferentes facturas
+- El stock se decrementa automáticamente al crear facturas
+- Si no hay stock suficiente, la factura no se creará
 - Los PDFs se generan y descargan automáticamente
+- Para producción, ejecuta `npm run build` antes de `npm start`

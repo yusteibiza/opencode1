@@ -1,0 +1,16 @@
+{
+  "name": "facturacion-app",
+  "version": "1.0.0",
+  "description": "Sistema web de facturación con base de datos SQLite, Node.js/Express backend y React frontend",
+  "scripts": {
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "start": "npm run build && cd backend && npm start",
+    "dev": "cd frontend && npm run dev",
+    "setup": "npm run install:all && npm start",
+    "prod": "npm run build && cd backend && npm start"
+  },
+  "keywords": ["facturacion", "billing", "react", "express", "sqlite"],
+  "author": "",
+  "license": "ISC"
+}

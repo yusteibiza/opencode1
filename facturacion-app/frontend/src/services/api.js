@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5000/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -31,6 +31,7 @@ export const facturasAPI = {
     create: (data) => api.post('/facturas', data),
     update: (id, data) => api.put(`/facturas/${id}`, data),
     delete: (id) => api.delete(`/facturas/${id}`),
+    pagar: (id) => api.put(`/facturas/${id}/pagar`),
 };
 
 export default api;
