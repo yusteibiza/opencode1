@@ -55,53 +55,137 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-    const { numero, cliente_id, fecha, subtotal, iva, total, items } = req.body;
+    const { numero, cliente_id, fecha, items } = req.body;
 
-    db.serialize(() => {
-        db.run('BEGIN TRANSACTION');
-
-        db.run(
-            'INSERT INTO facturas (numero, cliente_id, fecha, subtotal, iva, total) VALUES (?, ?, ?, ?, ?, ?)',
-            [numero, cliente_id, fecha, subtotal, iva, total],
-            function(err) {
+    // Validar stock disponible antes de crear la factura
+    const stockChecks = items.map(item => {
+        return new Promise((resolve, reject) => {
+            db.get('SELECT stock, nombre FROM productos WHERE id = ?', [item.producto_id], (err, row) => {
                 if (err) {
-                    db.run('ROLLBACK');
-                    res.status(500).json({ error: err.message });
+                    reject(err);
                     return;
                 }
+                if (!row) {
+                    reject(new Error(`Producto con ID ${item.producto_id} no encontrado`));
+                    return;
+                }
+                if (row.stock < item.cantidad) {
+                    reject(new Error(`Stock insuficiente para el producto "${row.nombre}". Disponible: ${row.stock}, Solicitado: ${item.cantidad}`));
+                    return;
+                }
+                resolve();
+            });
+        });
+    });
 
-                const facturaId = this.lastID;
+    Promise.all(stockChecks)
+        .then(() => {
+            db.serialize(() => {
+                db.run('BEGIN TRANSACTION');
 
-                const itemPromises = items.map(item => {
-                    return new Promise((resolve, reject) => {
-                        db.run(
-                            'INSERT INTO factura_items (factura_id, producto_id, cantidad, precio_unitario, subtotal) VALUES (?, ?, ?, ?, ?)',
-                            [facturaId, item.producto_id, item.cantidad, item.precio_unitario, item.subtotal],
-                            function(err) {
-                                if (err) reject(err);
-                                else resolve();
-                            }
-                        );
-                    });
+                // Calcular totales basados en los items
+                let subtotalFactura = 0;
+                let ivaFactura = 0;
+                let totalFactura = 0;
+
+                items.forEach(item => {
+                    const subtotalLinea = item.cantidad * item.precio_unitario;
+                    const ivaLinea = subtotalLinea * (item.iva_porcentaje / 100);
+                    const totalLinea = subtotalLinea + ivaLinea;
+                    
+                    subtotalFactura += subtotalLinea;
+                    ivaFactura += ivaLinea;
+                    totalFactura += totalLinea;
                 });
 
-                Promise.all(itemPromises)
-                    .then(() => {
-                        db.run('COMMIT');
-                        res.status(201).json({ 
-                            factura: { 
-                                id: facturaId, 
-                                numero, cliente_id, fecha, subtotal, iva, total 
-                            } 
+                db.run(
+                    'INSERT INTO facturas (numero, cliente_id, fecha, subtotal, iva, total) VALUES (?, ?, ?, ?, ?, ?)',
+                    [numero, cliente_id, fecha, subtotalFactura, ivaFactura, totalFactura],
+                    function(err) {
+                        if (err) {
+                            db.run('ROLLBACK');
+                            res.status(500).json({ error: err.message });
+                            return;
+                        }
+
+                        const facturaId = this.lastID;
+
+                        const itemPromises = items.map(item => {
+                            return new Promise((resolve, reject) => {
+                                const subtotalLinea = item.cantidad * item.precio_unitario;
+                                const ivaLinea = subtotalLinea * (item.iva_porcentaje / 100);
+                                const totalLinea = subtotalLinea + ivaLinea;
+
+                                db.run(
+                                    'INSERT INTO factura_items (factura_id, producto_id, cantidad, precio_unitario, iva_porcentaje, subtotal, iva_linea, total_linea) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                                    [facturaId, item.producto_id, item.cantidad, item.precio_unitario, item.iva_porcentaje, subtotalLinea, ivaLinea, totalLinea],
+                                    function(err) {
+                                        if (err) reject(err);
+                                        else resolve();
+                                    }
+                                );
+                            });
                         });
-                    })
-                    .catch(err => {
-                        db.run('ROLLBACK');
-                        res.status(500).json({ error: err.message });
-                    });
+
+                        Promise.all(itemPromises)
+                            .then(() => {
+                                // Actualizar stock de productos
+                                const stockPromises = items.map(item => {
+                                    return new Promise((resolve, reject) => {
+                                        db.run(
+                                            'UPDATE productos SET stock = stock - ? WHERE id = ?',
+                                            [item.cantidad, item.producto_id],
+                                            function(err) {
+                                                if (err) reject(err);
+                                                else resolve();
+                                            }
+                                        );
+                                    });
+                                });
+                                return Promise.all(stockPromises);
+                            })
+                            .then(() => {
+                                db.run('COMMIT');
+                                res.status(201).json({ 
+                                    factura: { 
+                                        id: facturaId, 
+                                        numero, cliente_id, fecha, subtotal: subtotalFactura, iva: ivaFactura, total: totalFactura 
+                                    } 
+                                });
+                            })
+                            .catch(err => {
+                                db.run('ROLLBACK');
+                                res.status(500).json({ error: err.message });
+                            });
+                    }
+                );
+            });
+        })
+        .catch(err => {
+            res.status(400).json({ error: err.message });
+        });
+});
+
+// Endpoint para marcar factura como pagada - DEBE IR ANTES de /:id
+router.put('/:id/pagar', (req, res) => {
+    db.run(
+        "UPDATE facturas SET estado = 'pagada' WHERE id = ? AND estado = 'pendiente'",
+        [req.params.id],
+        function(err) {
+            if (err) {
+                res.status(500).json({ error: err.message });
+                return;
             }
-        );
-    });
+            if (this.changes === 0) {
+                res.status(400).json({ 
+                    error: 'Factura no encontrada o ya está pagada',
+                    code: 'ALREADY_PAID'
+                });
+                return;
+            }
+            res.json({ message: 'Factura marcada como pagada' });
+        }
+    );
 });
 
 router.put('/:id', (req, res) => {

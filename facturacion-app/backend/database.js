@@ -28,6 +28,7 @@ function initDB() {
             nombre TEXT NOT NULL,
             descripcion TEXT,
             precio REAL NOT NULL,
+            iva_porcentaje REAL DEFAULT 21.0,
             stock INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
@@ -51,10 +52,39 @@ function initDB() {
             producto_id INTEGER NOT NULL,
             cantidad INTEGER NOT NULL,
             precio_unitario REAL NOT NULL,
+            iva_porcentaje REAL DEFAULT 21.0,
             subtotal REAL NOT NULL,
+            iva_linea REAL DEFAULT 0,
+            total_linea REAL NOT NULL,
             FOREIGN KEY (factura_id) REFERENCES facturas(id),
             FOREIGN KEY (producto_id) REFERENCES productos(id)
         )`);
+
+        // Migración: agregar columna iva_porcentaje a productos si no existe
+        db.all(`PRAGMA table_info(productos)`, [], (err, rows) => {
+            if (!err && rows && !rows.find(r => r.name === 'iva_porcentaje')) {
+                db.run(`ALTER TABLE productos ADD COLUMN iva_porcentaje REAL DEFAULT 21.0`);
+                console.log('Columna iva_porcentaje agregada a productos');
+            }
+        });
+
+        // Migración: agregar columnas a factura_items si no existen
+        db.all(`PRAGMA table_info(factura_items)`, [], (err, rows) => {
+            if (!err && rows) {
+                if (!rows.find(r => r.name === 'iva_porcentaje')) {
+                    db.run(`ALTER TABLE factura_items ADD COLUMN iva_porcentaje REAL DEFAULT 21.0`);
+                    console.log('Columna iva_porcentaje agregada a factura_items');
+                }
+                if (!rows.find(r => r.name === 'iva_linea')) {
+                    db.run(`ALTER TABLE factura_items ADD COLUMN iva_linea REAL DEFAULT 0`);
+                    console.log('Columna iva_linea agregada a factura_items');
+                }
+                if (!rows.find(r => r.name === 'total_linea')) {
+                    db.run(`ALTER TABLE factura_items ADD COLUMN total_linea REAL NOT NULL DEFAULT 0`);
+                    console.log('Columna total_linea agregada a factura_items');
+                }
+            }
+        });
     });
 }
 

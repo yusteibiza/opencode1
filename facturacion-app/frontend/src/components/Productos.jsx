@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { productosAPI } from '../services/api';
 import { formatMoneda } from '../services/utils';
+import { AlertModal, useAlertModal } from './AlertModal';
 
 function Productos() {
     const [productos, setProductos] = useState([]);
@@ -9,10 +10,13 @@ function Productos() {
         nombre: '',
         descripcion: '',
         precio: '',
+        iva_porcentaje: '21',
         stock: ''
     });
     const [editingId, setEditingId] = useState(null);
     const [showForm, setShowForm] = useState(false);
+
+    const { modalState, showAlert, handleConfirm, handleCancel } = useAlertModal();
 
     useEffect(() => {
         fetchProductos();
@@ -33,6 +37,7 @@ function Productos() {
             const data = {
                 ...formData,
                 precio: parseFloat(formData.precio),
+                iva_porcentaje: parseFloat(formData.iva_porcentaje),
                 stock: parseInt(formData.stock)
             };
             if (editingId) {
@@ -48,20 +53,47 @@ function Productos() {
     };
 
     const handleEdit = (producto) => {
-        setFormData(producto);
+        setFormData({
+            ...producto,
+            iva_porcentaje: producto.iva_porcentaje?.toString() || '21'
+        });
         setEditingId(producto.id);
         setShowForm(true);
     };
 
-    const handleDelete = async (id) => {
-        if (window.confirm('¿Está seguro de eliminar este producto?')) {
-            try {
-                await productosAPI.delete(id);
-                fetchProductos();
-            } catch (error) {
-                console.error('Error deleting producto:', error);
+    const handleDelete = async (producto) => {
+        showAlert({
+            title: '¿Eliminar producto?',
+            message: `¿Estás seguro de que quieres eliminar "${producto.nombre}"? Esta acción no se puede deshacer.`,
+            type: 'danger',
+            confirmText: 'Eliminar',
+            cancelText: 'Cancelar',
+            onConfirm: async () => {
+                try {
+                    await productosAPI.delete(producto.id);
+                    fetchProductos();
+                } catch (error) {
+                    // Verificar si el error es porque el producto está en uso
+                    if (error.response && error.response.data && error.response.data.code === 'PRODUCT_IN_USE') {
+                        showAlert({
+                            title: 'No se puede eliminar',
+                            message: `El producto "${producto.nombre}" no puede ser eliminado porque está siendo utilizado en facturas existentes.`,
+                            type: 'warning',
+                            confirmText: 'Entendido',
+                            showCancel: false
+                        });
+                    } else {
+                        showAlert({
+                            title: 'Error',
+                            message: 'No se pudo eliminar el producto. Inténtelo de nuevo.',
+                            type: 'danger',
+                            confirmText: 'Aceptar',
+                            showCancel: false
+                        });
+                    }
+                }
             }
-        }
+        });
     };
 
     const resetForm = () => {
@@ -70,6 +102,7 @@ function Productos() {
             nombre: '',
             descripcion: '',
             precio: '',
+            iva_porcentaje: '21',
             stock: ''
         });
         setEditingId(null);
@@ -77,91 +110,175 @@ function Productos() {
     };
 
     return (
-        <div className="container">
-            <h1>Gestión de Productos</h1>
-            <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-                {showForm ? 'Cancelar' : 'Nuevo Producto'}
-            </button>
+        <div>
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Productos</h1>
+                    <p className="page-subtitle">Administra tu catálogo de productos</p>
+                </div>
+                <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+                    {showForm ? 'Cancelar' : '+ Nuevo Producto'}
+                </button>
+            </div>
 
             {showForm && (
-                <form className="form" onSubmit={handleSubmit}>
-                    <h2>{editingId ? 'Editar Producto' : 'Nuevo Producto'}</h2>
-                    <input
-                        type="text"
-                        placeholder="Código *"
-                        value={formData.codigo}
-                        onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                        required
-                    />
-                    <input
-                        type="text"
-                        placeholder="Nombre *"
-                        value={formData.nombre}
-                        onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                        required
-                    />
-                    <input
-                        type="text"
-                        placeholder="Descripción"
-                        value={formData.descripcion}
-                        onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                    />
-                    <input
-                        type="number"
-                        step="0.01"
-                        placeholder="Precio *"
-                        value={formData.precio}
-                        onChange={(e) => setFormData({ ...formData, precio: e.target.value })}
-                        required
-                    />
-                    <input
-                        type="number"
-                        placeholder="Stock"
-                        value={formData.stock}
-                        onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                    />
-                    <button type="submit" className="btn btn-success">
-                        {editingId ? 'Actualizar' : 'Guardar'}
-                    </button>
-                    <button type="button" className="btn btn-secondary" onClick={resetForm}>
-                        Limpiar
-                    </button>
-                </form>
+                <div className="form-section">
+                    <h2 className="form-title">{editingId ? 'Editar Producto' : 'Nuevo Producto'}</h2>
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Código *</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Ej: PROD-001"
+                                    value={formData.codigo}
+                                    onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Nombre *</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Ej: Laptop Dell XPS"
+                                    value={formData.nombre}
+                                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Descripción</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Breve descripción del producto"
+                                    value={formData.descripcion}
+                                    onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group" style={{ maxWidth: '160px' }}>
+                                <label className="form-label">Precio *</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    className="form-input"
+                                    placeholder="0.00"
+                                    value={formData.precio}
+                                    onChange={(e) => setFormData({ ...formData, precio: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="form-group" style={{ maxWidth: '120px' }}>
+                                <label className="form-label">IVA %</label>
+                                <select
+                                    className="form-select"
+                                    value={formData.iva_porcentaje}
+                                    onChange={(e) => setFormData({ ...formData, iva_porcentaje: e.target.value })}
+                                >
+                                    <option value="0">0%</option>
+                                    <option value="4">4%</option>
+                                    <option value="10">10%</option>
+                                    <option value="21">21%</option>
+                                </select>
+                            </div>
+                            <div className="form-group" style={{ maxWidth: '120px' }}>
+                                <label className="form-label">Stock</label>
+                                <input
+                                    type="number"
+                                    className="form-input"
+                                    placeholder="0"
+                                    value={formData.stock}
+                                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="form-actions">
+                            <button type="button" className="btn btn-secondary" onClick={resetForm}>
+                                Cancelar
+                            </button>
+                            <button type="submit" className="btn btn-success">
+                                {editingId ? 'Actualizar' : 'Guardar'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
             )}
 
-            <table className="table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Código</th>
-                        <th>Nombre</th>
-                        <th>Descripción</th>
-                        <th>Precio</th>
-                        <th>Stock</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {productos.map((producto) => (
-                        <tr key={producto.id}>
-                            <td>{producto.id}</td>
-                            <td>{producto.codigo}</td>
-                            <td>{producto.nombre}</td>
-                            <td>{producto.descripcion}</td>
-                            <td>{formatMoneda(producto.precio)}</td>
-                            <td>{producto.stock}</td>
-                            <td>
-                                <button className="btn btn-warning" onClick={() => handleEdit(producto)}>
-                                    Editar
-                                </button>
-                                <button className="btn btn-danger" onClick={() => handleDelete(producto.id)}>
-                                    Eliminar
-                                </button>
-                            </td>
+            <div className="table-container">
+                <table className="table">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th style={{ textAlign: 'right' }}>Precio</th>
+                            <th style={{ textAlign: 'center' }}>IVA</th>
+                            <th style={{ textAlign: 'center' }}>Stock</th>
+                            <th style={{ textAlign: 'right' }}>Acciones</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {productos.length === 0 ? (
+                            <tr>
+                                <td colSpan="7">
+                                    <div className="empty-state">
+                                        <div className="empty-state-icon">📦</div>
+                                        <div className="empty-state-title">No hay productos</div>
+                                        <div>Agrega tu primer producto para comenzar</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        ) : (
+                            productos.map((producto) => (
+                                <tr key={producto.id}>
+                                    <td>
+                                        <span style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                                            {producto.codigo}
+                                        </span>
+                                    </td>
+                                    <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{producto.nombre}</td>
+                                    <td>{producto.descripcion || '-'}</td>
+                                    <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--primary)' }}>
+                                        {formatMoneda(producto.precio)}
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <span className="badge badge-info">{producto.iva_porcentaje || 21}%</span>
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <span className={producto.stock > 10 ? 'badge badge-success' : producto.stock > 0 ? 'badge badge-warning' : 'badge badge-danger'}>
+                                            {producto.stock}
+                                        </span>
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>
+                                        <button className="btn btn-sm btn-ghost" onClick={() => handleEdit(producto)}>
+                                            ✏️ Editar
+                                        </button>
+                                        <button className="btn btn-sm btn-ghost" style={{ color: 'var(--danger)' }} onClick={() => handleDelete(producto)}>
+                                            🗑️ Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            <AlertModal
+                isOpen={modalState.isOpen}
+                title={modalState.title}
+                message={modalState.message}
+                type={modalState.type}
+                onConfirm={handleConfirm}
+                onCancel={handleCancel}
+                confirmText={modalState.confirmText}
+                cancelText={modalState.cancelText}
+                showCancel={modalState.showCancel}
+            />
         </div>
     );
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { clientesAPI } from '../services/api';
+import { AlertModal, useAlertModal } from './AlertModal';
 
 function Clientes() {
     const [clientes, setClientes] = useState([]);
@@ -11,6 +12,9 @@ function Clientes() {
     });
     const [editingId, setEditingId] = useState(null);
     const [showForm, setShowForm] = useState(false);
+    const [clienteToDelete, setClienteToDelete] = useState(null);
+
+    const { modalState, showAlert, hideAlert, handleConfirm, handleCancel } = useAlertModal();
 
     useEffect(() => {
         fetchClientes();
@@ -46,14 +50,34 @@ function Clientes() {
         setShowForm(true);
     };
 
-    const handleDelete = async (id) => {
-        if (window.confirm('¿Está seguro de eliminar este cliente?')) {
-            try {
-                await clientesAPI.delete(id);
-                fetchClientes();
-            } catch (error) {
-                console.error('Error deleting cliente:', error);
-            }
+    const confirmDelete = (id) => {
+        const cliente = clientes.find(c => c.id === id);
+        setClienteToDelete(cliente);
+        showAlert({
+            title: '¿Eliminar cliente?',
+            message: `¿Está seguro de que desea eliminar al cliente "${cliente?.nombre}"? Esta acción no se puede deshacer.`,
+            type: 'danger',
+            confirmText: 'Eliminar',
+            cancelText: 'Cancelar',
+            onConfirm: () => executeDelete(id),
+            onCancel: () => setClienteToDelete(null)
+        });
+    };
+
+    const executeDelete = async (id) => {
+        try {
+            await clientesAPI.delete(id);
+            fetchClientes();
+            setClienteToDelete(null);
+        } catch (error) {
+            console.error('Error deleting cliente:', error);
+            showAlert({
+                title: 'Error',
+                message: 'No se pudo eliminar el cliente. Inténtelo de nuevo.',
+                type: 'danger',
+                showCancel: false,
+                confirmText: 'Aceptar'
+            });
         }
     };
 
@@ -69,80 +93,135 @@ function Clientes() {
     };
 
     return (
-        <div className="container">
-            <h1>Gestión de Clientes</h1>
-            <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-                {showForm ? 'Cancelar' : 'Nuevo Cliente'}
-            </button>
+        <div>
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Clientes</h1>
+                    <p className="page-subtitle">Gestiona la información de tus clientes</p>
+                </div>
+                <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+                    {showForm ? 'Cancelar' : '+ Nuevo Cliente'}
+                </button>
+            </div>
 
             {showForm && (
-                <form className="form" onSubmit={handleSubmit}>
-                    <h2>{editingId ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
-                    <input
-                        type="text"
-                        placeholder="Nombre *"
-                        value={formData.nombre}
-                        onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                        required
-                    />
-                    <input
-                        type="email"
-                        placeholder="Email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    />
-                    <input
-                        type="tel"
-                        placeholder="Teléfono"
-                        value={formData.telefono}
-                        onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                    />
-                    <input
-                        type="text"
-                        placeholder="Dirección"
-                        value={formData.direccion}
-                        onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                    />
-                    <button type="submit" className="btn btn-success">
-                        {editingId ? 'Actualizar' : 'Guardar'}
-                    </button>
-                    <button type="button" className="btn btn-secondary" onClick={resetForm}>
-                        Limpiar
-                    </button>
-                </form>
+                <div className="form-section">
+                    <h2 className="form-title">{editingId ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Nombre completo *</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Ej: Juan Pérez"
+                                    value={formData.nombre}
+                                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Correo electrónico</label>
+                                <input
+                                    type="email"
+                                    className="form-input"
+                                    placeholder="Ej: juan@email.com"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Teléfono</label>
+                                <input
+                                    type="tel"
+                                    className="form-input"
+                                    placeholder="Ej: +54 11 1234-5678"
+                                    value={formData.telefono}
+                                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Dirección</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Ej: Av. Principal 123"
+                                    value={formData.direccion}
+                                    onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="form-actions">
+                            <button type="button" className="btn btn-secondary" onClick={resetForm}>
+                                Cancelar
+                            </button>
+                            <button type="submit" className="btn btn-success">
+                                {editingId ? 'Actualizar' : 'Guardar'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
             )}
 
-            <table className="table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Email</th>
-                        <th>Teléfono</th>
-                        <th>Dirección</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {clientes.map((cliente) => (
-                        <tr key={cliente.id}>
-                            <td>{cliente.id}</td>
-                            <td>{cliente.nombre}</td>
-                            <td>{cliente.email}</td>
-                            <td>{cliente.telefono}</td>
-                            <td>{cliente.direccion}</td>
-                            <td>
-                                <button className="btn btn-warning" onClick={() => handleEdit(cliente)}>
-                                    Editar
-                                </button>
-                                <button className="btn btn-danger" onClick={() => handleDelete(cliente.id)}>
-                                    Eliminar
-                                </button>
-                            </td>
+            <div className="table-container">
+                <table className="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Teléfono</th>
+                            <th>Dirección</th>
+                            <th style={{ textAlign: 'right' }}>Acciones</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {clientes.length === 0 ? (
+                            <tr>
+                                <td colSpan="6">
+                                    <div className="empty-state">
+                                        <div className="empty-state-icon">👥</div>
+                                        <div className="empty-state-title">No hay clientes</div>
+                                        <div>Agrega tu primer cliente para comenzar</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        ) : (
+                            clientes.map((cliente) => (
+                                <tr key={cliente.id}>
+                                    <td>#{cliente.id}</td>
+                                    <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{cliente.nombre}</td>
+                                    <td>{cliente.email || '-'}</td>
+                                    <td>{cliente.telefono || '-'}</td>
+                                    <td>{cliente.direccion || '-'}</td>
+                                    <td style={{ textAlign: 'right' }}>
+                                        <button className="btn btn-sm btn-ghost" onClick={() => handleEdit(cliente)}>
+                                            ✏️ Editar
+                                        </button>
+                                        <button className="btn btn-sm btn-ghost" style={{ color: 'var(--danger)' }} onClick={() => confirmDelete(cliente.id)}>
+                                            🗑️ Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            <AlertModal
+                isOpen={modalState.isOpen}
+                title={modalState.title}
+                message={modalState.message}
+                type={modalState.type}
+                confirmText={modalState.confirmText}
+                cancelText={modalState.cancelText}
+                showCancel={modalState.showCancel}
+                onConfirm={handleConfirm}
+                onCancel={handleCancel}
+            />
         </div>
     );
 }
